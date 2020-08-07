@@ -1,0 +1,12 @@
+[submodule "libs/json"]
+	path = libs/json
+	url = https://github.com/nlohmann/json.git
+	ignore=dirty
+[submodule "libs/libdatachannel"]
+	path = libs/libdatachannel
+	url = https://github.com/paullouisageneau/libdatachannel.git
+	ignore=dirty
+[submodule "libs/seasocks"]
+	path = libs/seasocks
+	url = https://github.com/mattgodbolt/seasocks.git
+	ignore=dirty

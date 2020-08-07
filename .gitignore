@@ -1,0 +1,11 @@
+.project
+.cproject
+.settings
+bin
+lib
+CMakeCache.txt
+CMakeFiles
+Makefile
+version.cpp
+.idea
+webrtc-server.cbp

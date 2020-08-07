@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<h1>HI</h1>
+
+<script>
+
+    const config = {
+        iceServers: [{
+            urls: 'stun:stun.l.google.com:19302', // change to your STUN server
+        }],
+    };
+    let ws = new WebSocket("ws://localhost:8080/ws");
+    let rtc = new RTCPeerConnection(config);
+    ws.onopen = () => {
+        console.log('open');
+
+    };
+
+    rtc.onconnectionstatechange = (state) => console.log(state);
+    rtc.onicegatheringstatechange = (state) => console.log(state);
+
+    rtc.ondatachannel = (dc) => {
+        console.log("DATAC");
+        console.log(dc);
+        let i = 0;
+        setInterval(() => {
+            dc.channel.send(i);
+            i++;
+        }, 1000);
+        dc.channel.onmessage = (e) => {
+            console.log(e.data);
+        }
+    };
+
+    rtc.onicecandidate = (candidate) => {
+        console.log(candidate);
+        ws.send(JSON.stringify(candidate.candidate));
+    };
+
+    ws.onmessage = async (data) => {
+        console.log(data.data);
+        let parsed = JSON.parse(data.data);
+        console.log(parsed);
+        if (parsed.type === "candidate")
+            rtc.addIceCandidate(parsed);
+        else if (parsed.type === "offer") {
+            console.log(parsed.sdp);
+            await rtc.setRemoteDescription(parsed);
+            let answer = await rtc.createAnswer();
+            rtc.setLocalDescription(answer);
+            ws.send(JSON.stringify(answer));
+        }
+    }
+
+</script>
+
+</body>
+</html>

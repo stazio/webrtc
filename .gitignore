@@ -9,3 +9,4 @@ Makefile
 version.cpp
 .idea
 webrtc-server.cbp
+cmake_install.cmake

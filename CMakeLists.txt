@@ -8,7 +8,7 @@ set(LIBS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs)
 
 # Create Project & Settings
 project(${PROJECT_NAME})
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 #set( CMAKE_VERBOSE_MAKEFILE on )
 
 # Create the Executable
@@ -31,3 +31,15 @@ ADD_CUSTOM_COMMAND(
 
 # ++ ENTER YOUR SOURCE FILES HERE!
 target_sources(${PROJECT_NAME} PRIVATE src/main.cpp)
+
+# Include librtcsdp
+add_subdirectory(${LIBS_DIR}/libdatachannel)
+target_link_libraries(${PROJECT_NAME} datachannel)
+
+# Include seasocks
+add_subdirectory(${LIBS_DIR}/seasocks)
+target_link_libraries(${PROJECT_NAME} seasocks)
+
+#include json
+#add_subdirectory(${LIBS_DIR}/json)
+target_link_libraries(${PROJECT_NAME} nlohmann_json::nlohmann_json)

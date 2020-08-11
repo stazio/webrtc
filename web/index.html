@@ -10,11 +10,12 @@
 <script>
 
     const config = {
+        bundlePolicy: "max-bundle",
         iceServers: [{
             urls: 'stun:stun.l.google.com:19302', // change to your STUN server
         }],
     };
-    let ws = new WebSocket("ws://localhost:8080/ws");
+    let ws = new WebSocket("wss://localhost:44433/ws");
     let rtc = new RTCPeerConnection(config);
     ws.onopen = () => {
         console.log('open');
@@ -23,39 +24,76 @@
 
     rtc.onconnectionstatechange = (state) => console.log(state);
     rtc.onicegatheringstatechange = (state) => console.log(state);
+    rtc.onnegotiationneeded = async () => {
+        let offer = await rtc.createOffer();
+        rtc.setLocalDescription(offer);
+        console.log('OFFER:')
+        console.log(offer.sdp);
+        ws.send(JSON.stringify(offer));
+    };
 
     rtc.ondatachannel = (dc) => {
-        console.log("DATAC");
-        console.log(dc);
+        console.log("Data Channel Opened ", dc);
         let i = 0;
         setInterval(() => {
             dc.channel.send(i);
             i++;
         }, 1000);
         dc.channel.onmessage = (e) => {
+            console.log("Data Channel Message: ");
             console.log(e.data);
         }
     };
 
     rtc.onicecandidate = (candidate) => {
-        console.log(candidate);
+        console.log("Candidate");
+        console.log(candidate.candidate);
         ws.send(JSON.stringify(candidate.candidate));
     };
 
     ws.onmessage = async (data) => {
-        console.log(data.data);
         let parsed = JSON.parse(data.data);
-        console.log(parsed);
-        if (parsed.type === "candidate")
-            rtc.addIceCandidate(parsed);
-        else if (parsed.type === "offer") {
+        // console.log("WS Message: ");
+        // console.log(parsed);
+
+        if (parsed.type === "candidate") {
+            console.log("Remote Candidate");
+            console.log(parsed);
+            await rtc.addIceCandidate(parsed).catch(e => console.error(e));
+        }else if (parsed.type === "offer") {
+            console.log("Remote offer");
             console.log(parsed.sdp);
             await rtc.setRemoteDescription(parsed);
             let answer = await rtc.createAnswer();
-            rtc.setLocalDescription(answer);
+            await rtc.setLocalDescription(answer);
+            console.log("Local answer");
+            console.log(answer.sdp);
             ws.send(JSON.stringify(answer));
+        }else if (parsed.type === "answer") {
+            console.log("Remote answer");
+            console.log(parsed.sdp);
+            await rtc.setRemoteDescription(parsed);
         }
     }
+
+    (async function() {
+        let media = await navigator.mediaDevices.getUserMedia({"audio": true});
+
+        rtc.createDataChannel("test");
+        // console.log("data channel", dc);
+        // dc.onopen = () => {
+        //     console.log('open');
+        //     // setInterval(() => {
+        //     //     dc.channel.send(i);
+        //     //     i++;
+        //     // }, 1000);
+        //     // dc.channel.onmessage = (e) => {
+        //     //     console.log("Data Channel Message: ");
+        //     //     console.log(e.data);
+        //     // }
+        // };
+        media.getTracks().forEach(track => rtc.addTrack(track));
+    })();
 
 </script>
 

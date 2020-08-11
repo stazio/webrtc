@@ -50,27 +50,39 @@ public:
             json message = {
                             {"type", "candidate"},
                             {"candidate", std::string(candidate)},
-                            {"sdpMLineIndex", candidate.mid()}
+                            {"sdpMid", candidate.mid()}
             };
 
             server->execute([connection, message](){connection->send(message.dump());});
         });
-        rtc::Reliability rel;
-        rel.unordered = true;
-        rel.type = rtc::Reliability::TYPE_PARTIAL_RELIABLE_REXMIT;
-        rel.rexmit = 0;
-        peers[connection].dc = pc->createDataChannel("test", "", rel);
-        peers[connection].dc->onOpen([]{
-            std::cout << "OPEN" << std::endl;
-        });
-        auto dc = peers[connection].dc;
-        peers[connection].dc->onMessage([dc](std::variant<rtc::binary, rtc::string> data) {
-//            std::cout << "DATA" << std::endl;
 
-            std::string res = std::get<rtc::string>(data);
-            std::cout << res << std::endl;
-            dc->send(res);
+        pc->onMedia([](std::vector<rtc::byte> ptr) {
+            std::cout << "HI" << std::endl;
         });
+
+        pc->onDataChannel([](std::shared_ptr<rtc::DataChannel> channel) {
+            channel->onMessage([channel](std::variant<rtc::binary, rtc::string> data) {
+                std::string res = std::get<rtc::string>(data);
+                std::cout << res << std::endl;
+                channel->send(res);
+            });
+        });
+//        rtc::Reliability rel;
+//        rel.unordered = true;
+////        rel.type = rtc::Reliability::;
+//        rel.rexmit = 0;
+//        peers[connection].dc = pc->createDataChannel("test", "", rel);
+//        peers[connection].dc->onOpen([]{
+//            std::cout << "OPEN" << std::endl;
+//        });
+//        auto dc = peers[connection].dc;
+//        peers[connection].dc->onMessage([dc](std::variant<rtc::binary, rtc::string> data) {
+////            std::cout << "DATA" << std::endl;
+//
+//            std::string res = std::get<rtc::string>(data);
+//            std::cout << res << std::endl;
+//            dc->send(res);
+//        });
     }
     void onData(seasocks::WebSocket* connection, const char* data) override {
 
@@ -80,9 +92,10 @@ public:
             std::cout << data << std::endl;
             peers[connection].pc->addRemoteCandidate(rtc::Candidate(parsed["candidate"],parsed["sdpMid"]));
         }
-        if (parsed["type"] == "answer") {
-            std::cout << "answer" << std::endl;
-            peers[connection].pc->setRemoteDescription(rtc::Description(parsed["sdp"], rtc::Description::Type::Answer));
+        if (parsed["type"] == "answer" || parsed["type"] == "offer") {
+            std::cout << parsed["type"] << std::endl;
+            auto desc = rtc::Description(parsed["sdp"], parsed["type"].get<std::string>());
+            peers[connection].pc->setRemoteDescription(desc, desc);
         }
     }
 
@@ -95,7 +108,7 @@ public:
 int main(int argc, char** argv) {
     std::cout << "Starting " << PROJECT_NAME << " v. [" << GIT_REV << "]" <<std::endl;
 
-    auto logger = std::make_shared<seasocks::PrintfLogger>(seasocks::Logger::Level::Info);
+    auto logger = std::make_shared<seasocks::PrintfLogger>(seasocks::Logger::Level::Debug);
     seasocks::Server server(logger);
     rtc::InitLogger(rtc::LogLevel::Debug);
 
